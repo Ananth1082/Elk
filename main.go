@@ -51,6 +51,12 @@ type File struct {
 	Author  string `db:"author" json:"author"`
 }
 
+type UpdateFile struct {
+	Name    *string `json:"name,omitempty"`
+	Content *string `json:"content,omitempty"`
+	Author  *string `json:"author,omitempty"`
+}
+
 func main() {
 	db := dbConnect()
 	defer db.Close()
@@ -67,6 +73,7 @@ func main() {
 		}
 		return c.JSON(http.StatusOK, file)
 	})
+
 	e.POST("/file", func(c echo.Context) error {
 		file := new(File)
 		if err := c.Bind(file); err != nil {
@@ -77,6 +84,46 @@ func main() {
 			return echo.NewHTTPError(http.StatusInternalServerError, "Internal Server Error")
 		}
 		return c.JSON(http.StatusCreated, echo.Map{"msg": "File Created"})
+	})
+
+	e.PUT("/file/:id", func(c echo.Context) error {
+		file := new(UpdateFile)
+		c.Bind(file)
+		if file.Name == nil && file.Content == nil && file.Author == nil {
+			return echo.NewHTTPError(http.StatusBadRequest, "Bad Request")
+		}
+		query := "UPDATE Files SET "
+		if file.Name != nil {
+			query += "name = '" + *file.Name + "', "
+		}
+		if file.Content != nil {
+			query += "content = '" + *file.Content + "', "
+		}
+		if file.Author != nil {
+			query += "author = '" + *file.Author + "', "
+		}
+		query = query[:len(query)-2]
+		query += " WHERE id = $1"
+		if _, err := db.Exec(query, c.Param("id")); err != nil {
+			c.Echo().Logger.Print(err)
+			if err == sql.ErrNoRows {
+				return echo.NewHTTPError(http.StatusNotFound, "No File Found")
+			}
+			return echo.NewHTTPError(http.StatusInternalServerError, "Internal Server Error")
+		}
+		return c.JSON(http.StatusOK, echo.Map{"msg": "File Updated"})
+	})
+
+	e.DELETE("/file/:id", func(c echo.Context) error {
+		if _, err := db.Exec("DELETE FROM Files WHERE id = $1", c.Param("id")); err != nil {
+			c.Echo().Logger.Print(err)
+			if err == sql.ErrNoRows {
+				return echo.NewHTTPError(http.StatusNotFound, "File Not found")
+			} else {
+				return echo.NewHTTPError(http.StatusInternalServerError, "Internal Server Error")
+			}
+		}
+		return c.JSON(http.StatusOK, echo.Map{"msg": "File Deleted"})
 	})
 	e.Logger.Fatal(e.Start(":1323"))
 }

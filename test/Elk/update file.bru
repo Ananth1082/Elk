@@ -1,0 +1,22 @@
+meta {
+  name: update file
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{lurl}}/file/:id
+  body: json
+  auth: none
+}
+
+params:path {
+  id: 0e22b3fa-8133-4e67-9093-ed3a4c37eacc
+}
+
+body:json {
+  {
+  "name":"Ananth Ravi Raj Shetty",
+    "content":"This is new content"
+  }
+}
